@@ -1,11 +1,11 @@
-# Castalia-3.2_port_to_OMNeT_on_Windows_and_Linux
-# *****************************************************************
-# *  CASTALIA-3.2 PORT TO OMNeT++ v.4 ON WINDOWS AND LINUX        *
-# *  Installation Instructions          					      * 
-# *  Author(s): Alex Lacerda, Marcella Pinheiro                   *
-# *  Contact: help.lares@gmail.com                                *
-# *  					                                          * 
-# *****************************************************************
+# CastalIa-3.2 - Port to OMNeT++ IDE on Windows and Linux
+*****************************************************************
+*  CASTALIA-3.2 PORT TO OMNeT++ v.4 ON WINDOWS AND LINUX        *
+*  Installation Instructions          		                * 
+*  Author(s): Alex Lacerda, Marcella Pinheiro                   *
+*  Contact: help.lares@gmail.com                                *
+*  					                        * 
+*****************************************************************
 
 ===============================================================================
 This package adapts Castalia-3.2 to the OMNeT++ 4.x IDE on both Windows and
