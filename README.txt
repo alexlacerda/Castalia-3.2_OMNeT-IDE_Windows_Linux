@@ -28,12 +28,16 @@ Guide, follow the steps below:
 
 4. Add Castalia-3.2/bin directory to the path environment variable.
 
-5. Execute updateCastalia.sh script from the command line as follows:
-   - on Linux, change to CastaliaPortToOmnetppWindowsLinux directory and type:
+5. Assuming you have downloaded and extracted the file
+   Castalia-3.2_OMNeT-IDE_Windows_Linux-master.zip (available at github:
+   https://github.com/alexlacerda/Castalia-3.2_OMNeT-IDE_Windows_Linux), 
+   execute the updateCastalia.sh script from the command line as follows:
+   - on Linux, change to Castalia-3.2_OMNeT-IDE_Windows_Linux-master directory
+     and type:
       $ ./updateCastalia.sh
    - on Windows:
       - start mingwenv.cmd in your omnetpp-4.x directory.
-      - change to CastaliaPortToOmnetppWindowsLinux directory and type:
+      - change to Castalia-3.2_OMNeT-IDE_Windows_Linux-master directory and type:
          $ ./updateCastalia.sh
 
 Installation successfully completed! Now you should be able to import Castalia
