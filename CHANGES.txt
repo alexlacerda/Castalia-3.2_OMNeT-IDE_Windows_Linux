@@ -1,9 +1,9 @@
 *****************************************************************
 *  CASTALIA-3.2 PORT TO OMNeT++ v.4 ON WINDOWS AND LINUX        *
-*  Change Log                         					                *
+*  Change Log                                                   *
 *  Author(s): Alex Lacerda, Marcella Pinheiro                   *
 *  Contact: help.lares@gmail.com                                *
-*  					                                                    *
+*                                                               *
 *****************************************************************
 
 Changes made in Castalia-3.2:
