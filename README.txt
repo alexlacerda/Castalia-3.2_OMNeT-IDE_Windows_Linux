@@ -1,9 +1,9 @@
 *****************************************************************
 *  CASTALIA-3.2 PORT TO OMNeT++ v.4 IDE ON WINDOWS AND LINUX    *
-*  Installation Instructions          		                * 
+*  Installation Instructions                                    * 
 *  Author(s): Alex Lacerda, Marcella Pinheiro                   *
 *  Contact: help.lares@gmail.com                                *
-*  					                        * 
+*                                                               * 
 *****************************************************************
 
 ===============================================================================
