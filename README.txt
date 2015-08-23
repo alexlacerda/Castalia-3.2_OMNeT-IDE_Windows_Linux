@@ -54,8 +54,8 @@ To import Castalia-3.2 to OMNeT++ IDE:
      whenever you need to handle the results, you can use the command prompt.
 		
 To build Castalia-3.2 from the command line: 
-		- Open a terminal (or mingwenv.cmd, if you are on Windows)
-		- Change to Castalia-3.2 directory and type: 
-			$ ./makemake
-			$ make
-		- Now you can run simulations as described in the Castalia User's Manual
+   - Open a terminal (or mingwenv.cmd, if you are on Windows)
+   - Change to Castalia-3.2 directory and type: 
+      $ ./makemake
+      $ make
+   - Now you can run simulations as described in the Castalia User's Manual
