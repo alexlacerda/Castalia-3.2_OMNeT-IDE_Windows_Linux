@@ -1,0 +1,536 @@
+# *****************************************************************
+# *  CASTALIA-3.2 PORT TO OMNeT++ v.4 ON WINDOWS AND LINUX        *
+# *  Update Patch  					      * 
+# *  Author(s): Alex Lacerda, Marcella Pinheiro                   *
+# *  Contact: help.lares@gmail.com                                *
+# *  					                                          * 
+# *****************************************************************
+
+# This patch contains all the changes necessary to adapt/port Castalia.
+
+diff -uNr ./bin/Castalia ./bin/Castalia
+--- ./bin/Castalia	2011-02-21 21:50:01.000000000 -0800
++++ ./bin/Castalia	2015-08-16 02:02:41.487469000 -0700
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ # ****************************************************************************
+ # *  Copyright: National ICT Australia,  2009 - 2010                         *
+ # *  Developed at the ATP lab, Networked Systems research theme              *
+@@ -11,22 +11,63 @@
+ # *                                                                          *
+ # ***************************************************************************/
+ 
+-import os, sys, commands, getopt, re
++import os, sys, commands, getopt, re, platform
+ from datetime import date, time, datetime
+ from optparse import OptionParser
+ 
++if platform.system() == "Windows":
++	castaliaBinExtension = ".exe"
++	deleteFileCommand = "del"
++else:
++	castaliaBinExtension = ""
++	deleteFileCommand = "rm"
++	
+ #initialise important paths
+ pathToBin = sys.path[0]
+ pathToCastalia = os.path.abspath(pathToBin + "/../")
+-pathToCastaliaBin = pathToCastalia + "/CastaliaBin";
++pathToCastaliaBin = pathToCastalia + "/CastaliaBin" + castaliaBinExtension;
+ pathToExtract = pathToBin + "/extractOmnetppINI"
+ 
++def read_file(name,hasGeneral = 0):
++	if (not os.path.exists(name) or not os.path.isfile(name)):
++		quit("ERROR: no such file " + name)
++	
++	f = open(name,"r")
++	lines = f.readlines()
++	f.close()
++	newLines = ""
++	
++	for line in lines:
++		line = line.strip()
++		if (line == "[General]"): 
++			if (hasGeneral): continue
++			hasGeneral = 1
++		if (len(line) == 0 or line[0] == '#'): continue
++		pos = line.find('#')
++		if (pos != -1): 
++			line = line[:pos].strip()
++		if (line.find("include") == 0):
++			file = line[8:]
++			newLines = newLines + read_file(file, hasGeneral)
++		else: newLines = newLines + line + '\n'
++	
++	return newLines
++	
++def extractOmnetppINI(file):  
++	if (os.path.dirname(file) != ''):
++		os.chdir(os.path.dirname(file))
++		file = os.path.basename(file)     
++	
++	text = read_file(file)
++	pos = len(text) - 1
++	return text[:pos]
++
+ if len(sys.argv) == 1:
+ 	has_header = 0
+ 	for file in os.listdir('./'):
+ 		if not os.path.isfile(file): continue
+ 		if not re.search(r"\.ini$",file): continue
+-		lines = commands.getoutput(pathToExtract + " " + file).split("\n")
++		lines = extractOmnetppINI(file).split("\n")
+ 		if len(lines) < 2: continue
+ 		has_general = 0;
+ 		list = []
+@@ -79,7 +120,7 @@
+ 			quit("\nERROR: no such configuration, '" + c + "'\nAvailable configurations: " + ", ".join(dictionary.keys()) + "\n")
+ 		for k in config.keys():
+ 			if result.has_key(k) and result[k] != config[k]:
+-				quit("\nERROR: conflicting values for parameter '" + k + "' in interleaved congigurations: '"+ result[k] +"' and '"+ config[k] +"'\n")
++				quit("\nERROR: conflicting values for parameter '" + k + "' in interleaved configurations: '"+ result[k] +"' and '"+ config[k] +"'\n")
+ 			result[k] = config[k]
+ 	
+ 	result2 = {}
+@@ -92,7 +133,7 @@
+ 			quit("\nERROR: no such configuration, '" + c + "'\nAvailable configurations: " + ", ".join(dictionary.keys()) + "\n")
+ 		for k in config.keys():
+ 			if result2.has_key(k) and result2[k] != config[k]:
+-				quit("\nERROR: conflicting values for parameter '" + k + "' in base congigurations: '"+ result2[k] +"' and '"+ config[k] +"'\n")
++				quit("\nERROR: conflicting values for parameter '" + k + "' in base configurations: '"+ result2[k] +"' and '"+ config[k] +"'\n")
+ 			result2[k] = config[k]
+ 	
+ 	for k in result2.keys():
+@@ -123,7 +164,7 @@
+ 			return ncpus
+ 	return 1 # Default
+ 
+-ini = commands.getoutput(pathToExtract + " " + options.input).split("\n")
++ini = extractOmnetppINI(options.input).split("\n")
+ if len(ini) < 2: quit("\nERROR: Unable to read configuration")
+ if not os.path.exists(pathToCastaliaBin) or not os.path.isfile(pathToCastaliaBin):
+ 	quit("\nERROR: CastaliaBin not found (need to run make?)")
+@@ -295,11 +336,13 @@
+ 	f = open("omnetpp.tmp","w")
+ 	f.write("[General]\n")
+ 	f.write("repeat = " + str(options.repeat) + "\n")
++	f.write("SN.generateResultsFile = true \n") #allows compatibility with OMNeT++ IDE
++	f.write("SN.traceType = \"file\" \n") #allows compatibility with OMNeT++ IDE
+ 	for k in sorted(ini.keys()):
+ 		f.write(k + " = " + ini[k] + "\n")
+ 	f.close();
+ 	has_result = 0
+-	result = commands.getoutput(pathToCastaliaBin + " -f omnetpp.tmp");
++	result = os.popen(pathToCastaliaBin + " -f omnetpp.tmp", 'r').read() # using popen instead of commands.getoutput, which does not work on Windows.
+ 	if options.debug: print result
+ 	raw_result = []
+ 	for line in result.split("\n"):
+@@ -321,5 +364,7 @@
+ 			raw_result.append(line)
+ 	if not has_result: fr.write("\n".join(raw_result))
+ 
+-if not options.debug: commands.getoutput("rm omnetpp.tmp")
+-fr.close()
++if not options.debug: 
++	os.popen(deleteFileCommand + " omnetpp.tmp", 'r').read() # using popen instead of commands.getoutput, which does not work on Windows.
++
++fr.close()
+\ No newline at end of file
+diff -uNr ./bin/CastaliaPlot ./bin/CastaliaPlot
+--- ./bin/CastaliaPlot	2011-02-24 20:59:02.000000000 -0800
++++ ./bin/CastaliaPlot	2015-08-16 01:55:15.541439000 -0700
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ # ****************************************************************************
+ # *  Copyright: National ICT Australia,  2009 - 2010                         *
+ # *  Developed at the ATP lab, Networked Systems research theme              *
+@@ -11,8 +11,16 @@
+ # *                                                                          *
+ # ***************************************************************************/
+ 
+-import os, sys, commands, getopt, re
++import os, sys, commands, getopt, re, platform
+ from optparse import OptionParser
++
++if platform.system() == "Windows":
++	executablesExtension = ".exe"
++	deleteFileCommand = "del "
++else:
++	executablesExtension = ""
++	deleteFileCommand = "rm "
++
+ 			
+ styles = ["linespoints","histogram","stacked"]
+ col_sh = {	"b":"blue", 			"lb":"light-blue", 		"g":"green", 		"lg":"light-green", 
+@@ -32,7 +40,7 @@
+ parser.add_option("-s","--style", dest="style", type="string", default="linespoints", help="Plot style to be used, supported values: " + ", ".join(styles))
+ parser.add_option("--color-opacity", dest="opacity", type="float", default=0.65, help="Set box colour opacity, default is 0.65")
+ parser.add_option("--colors", dest="colors", type="string", help="Specify a comma-seprated list of colors to be used in the plot, or use '?' for full list available, arbitrary RGB values are supported with #RRGGBB format")
+-parser.add_option("--gnuplot", dest="gnuplot", type="string", default="gnuplot", help="Path to gnuplot executable, default is 'gnuplot'")
++parser.add_option("--gnuplot", dest="gnuplot", type="string", default="gnuplot"+executablesExtension, help="Path to gnuplot executable, default is 'gnuplot'")
+ parser.add_option("--hist-box", dest="boxwidth", type="float", default="0.9", help="Set width of histogram columns")
+ parser.add_option("--hist-gap", dest="histgap", type="float", help="Set gap between histogram columns")
+ parser.add_option("--invert", dest="invert", default=False, action="store_true", help="Invert the table passed as input (i.e. make rows to be columns and vice versa)")
+@@ -332,14 +340,27 @@
+ else:
+ 	name = options.output
+ 
++if platform.system() == "Windows":
++	name = options.output
++	if ext != "png" and ext != "jpg" and ext != "jpeg" and ext != "gif" and ext != "ps" and ext != "eps":
++		quit("CastaliaPlot: ERROR Unable to convert to ." + ext + ". Accepted formats: .png, .jpg, .gif, .ps, .eps")
++	if ext == "jpg":
++		ext = "jpeg"
++
+ if options.debug:
+ 	print("\n===DEBUG: gnuplot commands===")
+ f = os.popen(options.gnuplot,'w')
+ if options.grey:
+-	myprint(f, "set term postscript enhanced")
++	if platform.system() == "Windows" and ext != "ps" and ext != "eps":
++		myprint(f, "set term " + ext)		
++	else:
++		myprint(f, "set term postscript enhanced")
+ 	myprint(f, "set palette grey")
+ else:
+-	myprint(f, "set term postscript enhanced color")
++	if platform.system() == "Windows" and ext != "ps" and ext != "eps":
++		myprint(f, "set term " + ext)
++	else:
++		myprint(f, "set term postscript enhanced color")
+ 	
+ myprint(f, "set output \"" + name + "\"")
+ if options.title and len(options.title) > 0:
+@@ -472,7 +493,7 @@
+ r = ""
+ 
+ # check if 'convert' executable is present
+-if not which("convert"):
++if not which("convert" + executablesExtension):
+ 	print "CastaliaPlot: WARNING 'convert' tool not found, only ps and eps formats will be supported"
+ else:
+ 	if name != options.output:
+@@ -480,7 +501,11 @@
+ 		r = commands.getoutput("convert -rotate 90 " + command + " " + name + " " + options.output + " 2>&1")
+ 		commands.getoutput("rm " + name)
+ 
+-commands.getoutput("rm " + fname)
+-if r and r != "":
+-	quit("CastaliaPlot: ERROR " + r)
++os.popen(deleteFileCommand + fname, 'r').read()
+ 
++if platform.system() == "Windows":
++	if ext != "gif" and ext != "ps" and ext != "eps":
++		os.popen(name, 'r').read() #opens generated image
++	
++if r and r != "":
++	quit("CastaliaPlot: ERROR " + r)
+\ No newline at end of file
+diff -uNr ./bin/CastaliaResults ./bin/CastaliaResults
+--- ./bin/CastaliaResults	2011-02-24 20:59:02.000000000 -0800
++++ ./bin/CastaliaResults	2015-08-16 02:04:03.682848000 -0700
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/env python
+ # ****************************************************************************
+ # *  Copyright: National ICT Australia,  2009 - 2010                         *
+ # *  Developed at the ATP lab, Networked Systems research theme              *
+diff -uNr ./.cproject ./.cproject
+--- ./.cproject	1969-12-31 16:00:00.000000000 -0800
++++ ./.cproject	2015-08-14 09:48:40.000000000 -0700
+@@ -0,0 +1,111 @@
++<?xml version="1.0" encoding="UTF-8" standalone="no"?>
++<?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
++	<storageModule moduleId="org.eclipse.cdt.core.settings">
++		<cconfiguration id="org.omnetpp.cdt.gnu.config.debug.364761310">
++			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="org.omnetpp.cdt.gnu.config.debug.364761310" moduleId="org.eclipse.cdt.core.settings" name="gcc-debug">
++				<externalSettings/>
++				<extensions>
++					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.MachO64" point="org.eclipse.cdt.core.BinaryParser"/>
++					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
++					<extension id="org.eclipse.cdt.core.PE" point="org.eclipse.cdt.core.BinaryParser"/>
++				</extensions>
++			</storageModule>
++			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
++				<configuration artifactName="${ProjName}" buildProperties="" description="" id="org.omnetpp.cdt.gnu.config.debug.364761310" name="gcc-debug" parent="org.omnetpp.cdt.gnu.config.debug">
++					<folderInfo id="org.omnetpp.cdt.gnu.config.debug.364761310." name="/" resourcePath="">
++						<toolChain id="org.omnetpp.cdt.gnu.toolchain.debug.1058106835" name="GCC for OMNeT++" superClass="org.omnetpp.cdt.gnu.toolchain.debug">
++							<targetPlatform binaryParser="org.eclipse.cdt.core.ELF;org.eclipse.cdt.core.MachO64;org.eclipse.cdt.core.PE" id="org.omnetpp.cdt.targetPlatform.1864456436" isAbstract="false" name="Windows, Linux, Mac" osList="win32,linux,macosx" superClass="org.omnetpp.cdt.targetPlatform"/>
++							<builder id="org.omnetpp.cdt.gnu.builder.debug.303497659" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="OMNeT++ Make Builder (opp_makemake)" superClass="org.omnetpp.cdt.gnu.builder.debug"/>
++							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1653231084" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
++							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.195058882" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base">
++								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.827388572" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
++							</tool>
++							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.1753126989" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base">
++								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.163502854" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
++							</tool>
++							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.74120223" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base"/>
++							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.1912087266" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base">
++								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.610826348" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
++									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
++									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
++								</inputType>
++							</tool>
++							<tool id="cdt.managedbuild.tool.gnu.assembler.base.2049964101" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base">
++								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1739866151" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
++							</tool>
++						</toolChain>
++					</folderInfo>
++					<sourceEntries>
++						<entry excluding="Simulations|out|/Castalia-3.2/Simulations|bin|/Castalia-3.2/src" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
++					</sourceEntries>
++				</configuration>
++			</storageModule>
++			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
++		</cconfiguration>
++		<cconfiguration id="org.omnetpp.cdt.gnu.config.release.573219559">
++			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="org.omnetpp.cdt.gnu.config.release.573219559" moduleId="org.eclipse.cdt.core.settings" name="gcc-release">
++				<externalSettings/>
++				<extensions>
++					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
++					<extension id="org.eclipse.cdt.core.MachO64" point="org.eclipse.cdt.core.BinaryParser"/>
++					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
++					<extension id="org.eclipse.cdt.core.PE" point="org.eclipse.cdt.core.BinaryParser"/>
++				</extensions>
++			</storageModule>
++			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
++				<configuration artifactName="${ProjName}" buildProperties="" description="" id="org.omnetpp.cdt.gnu.config.release.573219559" name="gcc-release" parent="org.omnetpp.cdt.gnu.config.release">
++					<folderInfo id="org.omnetpp.cdt.gnu.config.release.573219559." name="/" resourcePath="">
++						<toolChain id="org.omnetpp.cdt.gnu.toolchain.release.989899936" name="GCC for OMNeT++" superClass="org.omnetpp.cdt.gnu.toolchain.release">
++							<targetPlatform binaryParser="org.eclipse.cdt.core.ELF;org.eclipse.cdt.core.MachO64;org.eclipse.cdt.core.PE" id="org.omnetpp.cdt.targetPlatform.1808565954" isAbstract="false" name="Windows, Linux, Mac" osList="win32,linux,macosx" superClass="org.omnetpp.cdt.targetPlatform"/>
++							<builder id="org.omnetpp.cdt.gnu.builder.release.1762593605" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="OMNeT++ Make Builder (opp_makemake)" superClass="org.omnetpp.cdt.gnu.builder.release"/>
++							<tool id="cdt.managedbuild.tool.gnu.archiver.base.416825910" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
++							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.1268712115" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base">
++								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.960351441" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
++							</tool>
++							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.1810870665" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base">
++								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1578359513" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
++							</tool>
++							<tool id="cdt.managedbuild.tool.gnu.c.linker.base.1297024409" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.base"/>
++							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.base.727808619" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.base">
++								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1339645211" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
++									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
++									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
++								</inputType>
++							</tool>
++							<tool id="cdt.managedbuild.tool.gnu.assembler.base.895379817" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base">
++								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1312065302" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
++							</tool>
++						</toolChain>
++					</folderInfo>
++					<sourceEntries>
++						<entry excluding="Simulations|out|/Castalia-3.2/Simulations|bin|/Castalia-3.2/src" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
++					</sourceEntries>
++				</configuration>
++			</storageModule>
++			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
++		</cconfiguration>
++	</storageModule>
++	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
++		<project id="Castalia-3.2.org.omnetpp.cdt.omnetppProjectType.340561453" name="OMNeT++ Simulation" projectType="org.omnetpp.cdt.omnetppProjectType"/>
++	</storageModule>
++	<storageModule moduleId="scannerConfiguration">
++		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
++		<scannerConfigBuildInfo instanceId="org.omnetpp.cdt.gnu.config.debug.364761310">
++			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.omnetpp.cdt.OmnetppGCCPerProjectProfile"/>
++		</scannerConfigBuildInfo>
++		<scannerConfigBuildInfo instanceId="org.omnetpp.cdt.gnu.config.release.573219559">
++			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.omnetpp.cdt.OmnetppGCCPerProjectProfile"/>
++		</scannerConfigBuildInfo>
++	</storageModule>
++	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
++	<storageModule moduleId="refreshScope"/>
++</cproject>
+diff -uNr ./.nedfolders ./.nedfolders
+--- ./.nedfolders	1969-12-31 16:00:00.000000000 -0800
++++ ./.nedfolders	2015-08-16 03:21:34.657641882 -0700
+@@ -0,0 +1 @@
++src
+diff -uNr ./.oppbuildspec ./.oppbuildspec
+--- ./.oppbuildspec	1969-12-31 16:00:00.000000000 -0800
++++ ./.oppbuildspec	2015-08-07 10:04:03.000000000 -0700
+@@ -0,0 +1,3 @@
++<buildspec version="4.0">
++<dir makemake-options="--deep -o CastaliaBin -u Cmdenv --meta:recurse --meta:auto-include-path --meta:export-library --meta:use-exported-libs --meta:feature-cflags --meta:feature-ldflags" path="." type="makemake"/>
++</buildspec>
+diff -uNr ./.project ./.project
+--- ./.project	1969-12-31 16:00:00.000000000 -0800
++++ ./.project	2015-08-07 10:04:03.000000000 -0700
+@@ -0,0 +1,38 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<projectDescription>
++	<name>Castalia-3.2</name>
++	<comment></comment>
++	<projects>
++	</projects>
++	<buildSpec>
++		<buildCommand>
++			<name>org.omnetpp.cdt.MakefileBuilder</name>
++			<arguments>
++			</arguments>
++		</buildCommand>
++		<buildCommand>
++			<name>org.omnetpp.scave.builder.vectorfileindexer</name>
++			<arguments>
++			</arguments>
++		</buildCommand>
++		<buildCommand>
++			<name>org.eclipse.cdt.managedbuilder.core.genmakebuilder</name>
++			<triggers>clean,full,incremental,</triggers>
++			<arguments>
++			</arguments>
++		</buildCommand>
++		<buildCommand>
++			<name>org.eclipse.cdt.managedbuilder.core.ScannerConfigBuilder</name>
++			<triggers>full,incremental,</triggers>
++			<arguments>
++			</arguments>
++		</buildCommand>
++	</buildSpec>
++	<natures>
++		<nature>org.eclipse.cdt.core.cnature</nature>
++		<nature>org.eclipse.cdt.core.ccnature</nature>
++		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
++		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
++		<nature>org.omnetpp.main.omnetppnature</nature>
++	</natures>
++</projectDescription>
+diff -uNr ./src/helpStructures/CastaliaModule.cc ./src/helpStructures/CastaliaModule.cc
+--- ./src/helpStructures/CastaliaModule.cc	2010-12-09 04:56:47.000000000 -0800
++++ ./src/helpStructures/CastaliaModule.cc	2015-08-14 13:03:22.000000000 -0700
+@@ -11,14 +11,24 @@
+  ****************************************************************************/
+ 
+ #include "CastaliaModule.h"
+-
++ 
+ #define CASTALIA_PREFIX "Castalia|\t"
++#define TRACE_TO_FILE "file" 
++#define TRACE_TO_CONSOLE "console" 
+ 
+ void CastaliaModule::finish()
+ {
+-	finishSpecific();
++  	finishSpecific();
++	
+ 	if (simpleoutputs.size() == 0 && histograms.size() == 0)
+ 		return;
++	
++    if (!getSNModule()->par("generateResultsFile")) {
++		simpleoutputs.clear();
++		histograms.clear();
++		return; 
++	}
++	
+ 	bool header = true;
+ 
+ 	simpleOutputMapType::iterator i1;
+@@ -77,12 +87,22 @@
+ 
+ std::ostream & CastaliaModule::trace()
+ {
+-	if (hasPar("collectTraceInfo") && par("collectTraceInfo")) {
+-		return (ostream &) DebugInfoWriter::getStream() <<
+-			"\n" << setw(16) << simTime() << setw(40) << getFullPath() << " ";
+-	} else {
+-		return empty;
+-	}
++    if (hasPar("collectTraceInfo") && par("collectTraceInfo")) {
++        string traceType = getSNModule()->par("traceType"); 
++        if (traceType.compare(TRACE_TO_CONSOLE) == 0) {
++            return cout << left <<"\n" << setw(16) << simTime() << setw(40) << getFullPath() << " ";
++        }
++
++        if (traceType.compare(TRACE_TO_FILE) == 0) {
++            return (ostream &) DebugInfoWriter::getStream() << "\n" << setw(16) << simTime() << setw(40) << getFullPath() << " ";
++        }
++
++        stringstream errorMessage;
++        errorMessage << traceType << " is not a valid option for parameter SN.traceType. Values accepted are \"file\" and \"console\"";
++        opp_error(errorMessage.str().c_str());
++    }
++
++    return empty;
+ }
+ 
+ std::ostream & CastaliaModule::debug()
+@@ -191,3 +211,14 @@
+ 	drawPowerMsg->setPowerConsumed(power);
+ 	sendDirect(drawPowerMsg, classPointers.resourceManager, "powerConsumption");
+ }
++
++cModule* CastaliaModule::getSNModule() {
++    cModule* module = getParentModule();
++    while(true) {
++        string moduleName(module->getName());
++        if (moduleName.compare("SN") == 0) {
++            return module;
++        }
++        module = module->getParentModule();
++    }
++}
+\ No newline at end of file
+diff -uNr ./src/helpStructures/CastaliaModule.h ./src/helpStructures/CastaliaModule.h
+--- ./src/helpStructures/CastaliaModule.h	2010-12-09 04:56:47.000000000 -0800
++++ ./src/helpStructures/CastaliaModule.h	2015-08-14 12:55:26.000000000 -0700
+@@ -108,6 +108,8 @@
+ 
+ 	void powerDrawn(double);
+ 
++    cModule* getSNModule(); 
++
+ };
+ 
+ #endif
+diff -uNr ./src/node/Node.ned ./src/node/Node.ned
+--- ./src/node/Node.ned	2010-11-14 21:13:42.000000000 -0800
++++ ./src/node/Node.ned	2015-08-04 13:06:23.000000000 -0700
+@@ -12,7 +12,7 @@
+ 
+ package node;
+ 
+-import node.mobilityManager;
++import node.mobilityManager.*;
+ 
+ // The sensor node module. Connects to the wireless channel in order to communicate 
+ // with other nodes. Connects to psysical processes so it can sample them.
+diff -uNr ./src/SensorNetwork.ned ./src/SensorNetwork.ned
+--- ./src/SensorNetwork.ned	2010-08-10 22:52:12.000000000 -0700
++++ ./src/SensorNetwork.ned	2015-08-14 12:27:18.000000000 -0700
+@@ -10,9 +10,9 @@
+ //*                                                                              *
+ //*******************************************************************************/
+ 
+-import wirelessChannel;
+-import physicalProcess;
+-import node;
++import wirelessChannel.*;
++import physicalProcess.*;
++import node.*;
+ 
+ network SN {
+ 	
+@@ -28,7 +28,11 @@
+ 	int numPhysicalProcesses = default (1);
+ 	string physicalProcessName = default ("CustomizablePhysicalProcess");
+ 	string debugInfoFileName = default ("Castalia-Trace.txt");
+-
++	
++	// The following two parameters should not be modified. Their default values are used only when we execute Castalia from OMNeT++ IDE
++	// When we execute Castalia from the command line, their values are automatically changed to "true" and "file", respectively
++	bool generateResultsFile = default(false); // skips Castalia's output file generation
++	string traceType = default("console"); // redirects modules' trace to the console, instead of Castalia-Trace.txt file
+  submodules:
+ 	wirelessChannel:wirelessChannel.WirelessChannel {
+ 	 gates:
