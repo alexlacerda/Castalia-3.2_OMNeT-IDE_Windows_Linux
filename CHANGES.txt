@@ -1,0 +1,23 @@
+*****************************************************************
+*  CASTALIA-3.2 PORT TO OMNeT++ v.4 ON WINDOWS AND LINUX        *
+*  Change Log                         					                *
+*  Author(s): Alex Lacerda, Marcella Pinheiro                   *
+*  Contact: help.lares@gmail.com                                *
+*  					                                                    *
+*****************************************************************
+
+Changes made in Castalia-3.2:
+
+ - Added files .cproject, .nedfolders, .oppbuildspec, and .project to allow
+   Castalia-3.2 to be imported to OMNeT++ IDE as a project.
+
+ - Castalia, CastaliaResults, and CastaliaPlot scripts: changes to make it
+   possible to execute those scripts on Windows, for all OMNeT++ 4.x versions.
+
+ - CastaliaModule.cc and CastaliaModule.h: changes to redirect Castalia 
+   simulation traces to the console of the OMNeT++ IDE and to suppress the 
+   generation of results file, which can only be completely generated from the
+   command prompt by the Castalia script.
+
+ - Node.ned and SensorNetwork.ned: changes to the import lines, which were 
+   causing error alerts in the IDE text editor.
