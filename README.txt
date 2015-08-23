@@ -9,7 +9,7 @@
 ===============================================================================
 This package adapts Castalia-3.2 to the OMNeT++ 4.x IDE on both Windows and
 Linux. It also allows running Castalia simulations from the command prompt on
-Windows, in case you need to use CastaliaResults and CastaliaPlot scripts.
+Windows, so that you can use CastaliaResults and CastaliaPlot scripts.
 ===============================================================================
 
 INSTALLATION Instructions
