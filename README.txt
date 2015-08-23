@@ -30,7 +30,7 @@ Guide, follow the steps below:
 
 5. Assuming you have downloaded and extracted the file
    Castalia-3.2_OMNeT-IDE_Windows_Linux-master.zip (available at github:
-   https://github.com/alexlacerda/Castalia-3.2_OMNeT-IDE_Windows_Linux), 
+   https://github.com/alexlacerda/Castalia-3.2_OMNeT-IDE_Windows_Linux/archive/master.zip, 
    execute the updateCastalia.sh script from the command line as follows:
    - on Linux, change to Castalia-3.2_OMNeT-IDE_Windows_Linux-master directory
      and type:
